@@ -1,0 +1,87 @@
+03:53:12 : Loading data - In progress
+03:53:12 : Loading data - Done
+03:53:12 : Sequencer - Begin of Mission
+03:53:18 : Robot completely fitted - Start Step
+03:53:29 : Step 1 | C : Web | ToolDiameter : 4.8
+03:53:30 : Station 1 | Rail : 1 Front 
+03:53:30 : Approach
+03:54:28 : Point 1 : Fastener asna2392-3-04.178 - Done
+03:55:00 : Point 2 : Fastener asna2392-3-04.179 - Done
+03:55:33 : Point 3 : Fastener asna2392-3-04.180 - Done
+03:56:10 : Point 4 : Fastener asna2392-3-04.181 - Done
+03:56:41 : Point 5 : Fastener asna2392-3-04.182 - Done
+03:57:18 : Point 6 : Fastener asna2392-3-04.183 - Done
+03:57:53 : Point 7 : Fastener asna2392-3-04.184 - Done
+03:58:24 : Point 8 : Fastener asna2392-3-04.185 - Done
+03:58:58 : Point 9 : Fastener asna2392-3-04.186 - Done
+03:59:38 : Point 10 : Fastener asna2392-3-04.189 - Done
+04:00:09 : Point 11 : Fastener asna2392-3-04.188 - Done
+04:00:09 : Clearance
+04:00:38 : End of station 1
+04:00:38 : Station 2 | Rail : 1 Back 
+04:00:38 : Approach
+04:01:34 : Point 1 : Fastener asna2392-3-04.200 - Done
+04:02:10 : Point 2 : Fastener asna2392-3-04.199 - Done
+04:02:43 : Point 3 : Fastener asna2392-3-04.198 - Done
+04:03:10 : Point 4 : Fastener asna2392-3-04.197 - Done
+04:03:32 : Point 5 : Fastener asna2392-3-04.196 - Done
+04:03:51 : Point 6 : Fastener asna2392-3-04.195 - Done
+04:04:08 : Point 7 : Fastener asna2392-3-04.194 - Done
+04:04:28 : Point 8 : Fastener asna2392-3-04.193 - Done
+04:04:56 : Point 9 : Fastener asna2392-3-04.192 - Done
+04:05:27 : Point 10 : Fastener asna2392-3-04.191 - Done
+04:05:56 : Point 11 : Fastener asna2392-3-04.190 - Done
+04:05:56 : Clearance
+04:06:17 : End of station 2
+04:06:17 : Station 3 | Rail : 2 Front 
+04:06:17 : Approach
+04:06:44 : Point 1 : Fastener asna2392-3-04.251 - Done
+04:06:59 : Point 2 : Fastener asna2392-3-04.261 - Done
+04:07:16 : Point 3 : Fastener asna2392-3-04.252 - Done
+04:07:36 : Point 4 : Fastener asna2392-3-04.260 - Done
+04:08:03 : Point 5 : Fastener asna2392-3-04.253 - Done
+04:08:37 : Point 6 : Fastener asna2392-3-04.259 - Done
+04:09:09 : Point 7 : Fastener asna2392-3-04.254 - Done
+04:09:35 : Point 8 : Fastener asna2392-3-04.258 - Done
+04:09:57 : Point 9 : Fastener asna2392-3-04.255 - Done
+04:10:12 : Point 10 : Fastener asna2392-3-04.257 - Done
+04:10:27 : Point 11 : Fastener asna2392-3-04.256 - Done
+04:10:27 : Clearance
+04:10:41 : End of station 3
+04:10:41 : Station 4 | Rail : 2 Back 
+04:10:41 : Approach
+04:11:14 : Point 1 : Fastener asna2392-3-04.240 - Done
+04:11:48 : Point 2 : Fastener asna2392-3-04.241 - Done
+04:12:19 : Point 3 : Fastener asna2392-3-04.242 - Done
+04:12:47 : Point 4 : Fastener asna2392-3-04.243 - Done
+04:13:09 : Point 5 : Fastener asna2392-3-04.244 - Done
+04:13:28 : Point 6 : Fastener asna2392-3-04.245 - Done
+04:13:42 : Point 7 : Fastener asna2392-3-04.246 - Done
+04:13:59 : Point 8 : Fastener asna2392-3-04.247 - Done
+04:14:18 : Point 9 : Fastener asna2392-3-04.248 - Done
+04:14:45 : Point 10 : Fastener asna2392-3-04.249 - Done
+04:15:13 : Point 11 : Fastener asna2392-3-04.250 - Done
+04:15:13 : Clearance
+04:15:40 : End of station 4
+04:15:40 : Station 5 | Rail : 5 Front 
+04:15:40 : Approach
+04:16:22 : Point 1 : Fastener asna2392-3-04.382 - Done
+04:16:40 : Point 2 : Fastener asna2392-3-04.383 - Done
+04:16:52 : Point 3 : Fastener asna2392-3-04.381 - Done
+04:17:04 : Point 4 : Fastener asna2392-3-04.384 - Done
+04:17:19 : Point 5 : Fastener asna2392-3-04.380 - Done
+04:17:37 : Point 6 : Fastener asna2392-3-04.385 - Done
+04:17:57 : Point 7 : Fastener asna2392-3-04.379 - Done
+04:18:21 : Point 8 : Fastener asna2392-3-04.386 - Done
+04:18:54 : Point 9 : Fastener asna2392-3-04.378 - Done
+04:19:20 : Point 10 : Fastener asna2392-3-04.387 - Done
+04:19:42 : Point 11 : Fastener asna2392-3-04.377 - Done
+04:19:42 : Clearance
+04:20:00 : End of station 5
+04:20:00 : Station 6 | Rail : 5 Back 
+04:20:00 : Approach
+04:20:24 : Point 1 : Fastener asna2392-3-04.367 - Done
+04:20:42 : Point 2 : Fastener asna2392-3-04.366 - Done
+04:21:03 : Point 3 : Fastener asna2392-3-04.368 - Done
+04:21:27 : Point 4 : Fastener asna2392-3-04.369 - Done
+04:21:56 : Point 5 : Fastener asna2392-3-04.370 - Done
