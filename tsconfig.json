@@ -1,0 +1,14 @@
+{
+    "extends": "@tsconfig/node14/tsconfig.json",
+    "compilerOptions": {
+      "preserveConstEnums": true,
+      "module": "commonjs",
+      "target": "es6",
+      "jsx": "preserve",
+      "strictFunctionTypes": true,
+      "sourceMap": true,
+      "outDir": "bin",
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "**/*.spec.ts", "tests/**/*"],
+}

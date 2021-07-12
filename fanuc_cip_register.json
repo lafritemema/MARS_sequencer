@@ -1,0 +1,304 @@
+{
+    "vendor": {
+        "name": "fanuc",
+        "id": 356
+    },
+    "messages": {
+        "get_single_int_reg": {
+            "service": "Get_Attr_Single",
+            "class": "0x6b",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_all_int_reg": {
+            "service": "Get_Attr_All",
+            "class": "0x6b",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_block_int_reg": {
+            "service": "Get_Attr_Block",
+            "class": "0x6b",
+            "instance": "blk_size,1",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "set_single_int_reg": {
+            "service": "Set_Attr_Single",
+            "class": "0x6b",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_all_int_reg": {
+            "service": "Set_Attr_All",
+            "class": "0x6b",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_block_int_reg": {
+            "service": "Set_Attr_Block",
+            "class": "0x6b",
+            "instance": "blk_size,1",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "get_single_real_reg": {
+            "service": "Get_Attr_Single",
+            "class": "0X6c",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_all_real_reg": {
+            "service": "Get_Attr_All",
+            "class": "0X6c",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_block_real_reg": {
+            "service": "Get_Attr_Block",
+            "class": "0X6c",
+            "instance": "blk_size,1",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "set_single_real_reg": {
+            "service": "Set_Attr_Single",
+            "class": "0X6c",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_all_real_reg": {
+            "service": "Set_Attr_All",
+            "class": "0X6c",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_block_real_reg": {
+            "service": "Set_Attr_Block",
+            "class": "0X6c",
+            "instance": "blk_size,1",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "get_single_str_reg": {
+            "service": "Get_Attr_Single",
+            "class": "0X6d",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_all_str_reg": {
+            "service": "Get_Attr_All",
+            "class": "0X6d",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_block_str_reg": {
+            "service": "Get_Attr_Block",
+            "class": "0X6d",
+            "instance": "blk_size,1",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "set_single_str_reg": {
+            "service": "Set_Attr_Single",
+            "class": "0X6d",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_all_str_reg": {
+            "service": "Set_Attr_All",
+            "class": "0X6d",
+            "instance": "1",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_block_str_reg": {
+            "service": "Set_Attr_Block",
+            "class": "0X6d",
+            "instance": "blk_size,1",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "get_single_crt_pos_reg": {
+            "service": "Get_Attr_Single",
+            "class": "0x7b",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_all_crt_pos_reg": {
+            "service": "Get_Attr_All",
+            "class": "0x7b",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_block_crt_pos_reg": {
+            "service": "Get_Attr_Block",
+            "class": "0x7b",
+            "instance": "blk_size,group",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "set_single_crt_pos_reg": {
+            "service": "Set_Attr_Single",
+            "class": "0x7b",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_all_crt_pos_reg": {
+            "service": "Set_Attr_All",
+            "class": "0x7b",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_block_crt_pos_reg": {
+            "service": "Set_Attr_Block",
+            "class": "0x7b",
+            "instance": "blk_size,group",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "get_single_jnt_pos_reg": {
+            "service": "Get_Attr_Single",
+            "class": "0x7c",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_all_jnt_pos_reg": {
+            "service": "Get_Attr_All",
+            "class": "0x7c",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_block_jnt_pos_reg": {
+            "service": "Get_Attr_Block",
+            "class": "0x7c",
+            "instance": "blk_size,group",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "set_single_jnt_pos_reg": {
+            "service": "Set_Attr_Single",
+            "class": "0x7c",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_all_jnt_pos_reg": {
+            "service": "Set_Attr_All",
+            "class": "0x7c",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": false,
+            "is_payload": false,
+            "method": "set"
+        },
+        "set_block_jnt_pos_reg": {
+            "service": "Set_Attr_Block",
+            "class": "0x7c",
+            "instance": "blk_size,group",
+            "instance_size": 16,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "set"
+        },
+        "get_single_crt_cur_pos": {
+            "service": "Get_Attr_Single",
+            "class": "0x7d",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        },
+        "get_single_jnt_cur_pos": {
+            "service": "Get_Attr_Single",
+            "class": "0x7d",
+            "instance": "group",
+            "instance_size": 8,
+            "is_attribute": true,
+            "is_payload": false,
+            "method": "get"
+        }
+    },
+    "cip_services": [
+        "Get_Attr_Single",
+        "Get_Attr_All",
+        "Get_Attr_Block",
+        "Set_Attr_Single",
+        "Set_Attr_All",
+        "Set_Attr_Block"
+    ]
+}
