@@ -1,0 +1,19 @@
+{
+  "sequenceRequest" : {
+    "actionType": "work",
+    "element": "fastener",
+    "reference": ["EN6115V3-4"]
+  },
+  "rabbitMq":{
+    "url": "amqp://localhost",
+    "exchange": "sequencer"
+  },
+  "enipProxy":{
+    "hostname": "localhost",
+    "port": 8000
+  },
+  "buildProcessor":{
+    "hostname": "localhost",
+    "port":8001
+  }
+}
