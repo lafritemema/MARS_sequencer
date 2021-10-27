@@ -2,11 +2,12 @@
 export interface BuildProcessPacket {
   sequence?:Stage[],
   status: 'SUCCESS'|'ERROR',
-  tree?:string,
+  tree:Action[],
   error?:string,
 }
 
 export interface Stage {
+  id:string,
   description:string,
   requestSequence:RequestStage[],
   type:string,
@@ -24,4 +25,9 @@ interface Definition {
   body:object,
   method:'PUT'|'GET'|'SUBSCRIBE',
   query:object,
+}
+
+interface Action {
+  id:string,
+  description:string,
 }

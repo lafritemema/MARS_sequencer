@@ -14,6 +14,7 @@ let exchange:string;
 const cmdTopic = 'action.cmd';
 const proxyAlertTopic = 'proxy.alert';
 const allBuildPTopic = 'buildp.all';
+const reportBuildPTopic = 'buildp.report';
 
 try {
   proxyHost = config.get<string>('enipProxy.hostname');
@@ -78,6 +79,11 @@ stream
         // buildp.all topic is for transmit information about build process
         // to IHM
         channel.publish(exchange, allBuildPTopic, dataBuffer);
+      });
+
+      eventManager.on(reportBuildPTopic, (report)=>{
+        const dataBuffer = Buffer.from(JSON.stringify(report));
+        channel.publish(exchange, reportBuildPTopic, dataBuffer);
       });
     })
     .catch((error)=>{
@@ -175,10 +181,16 @@ async function runSequence(sequence:Stage[]) {
       try {
         const stageIt = stageGen.next();
         if (!stageIt.done) {
-          console.log('Run sequence : '+ (<Stage>stageIt.value).description);
+          const stage = <Stage>stageIt.value;
+          console.log('Run sequence : '+ stage.description);
           // eslint-disable-next-line max-len
-          const status = await runSubSequence((<Stage>stageIt.value).requestSequence);
+          const status = await runSubSequence(stage.requestSequence);
           console.log(status);
+          eventManager.emit(reportBuildPTopic,
+              {
+                id: stage.id,
+                status: 'SUCCESS',
+              });
         } else {
           resolve(true);
           break;
