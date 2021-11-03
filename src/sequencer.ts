@@ -1,7 +1,14 @@
 import * as amqp from 'amqplib';
 import {EventEmitter} from 'stream';
-import {BuildProcessPacket, RequestStage, Stage} from './buildp_interfaces';
-import axios, {Method} from 'axios';
+import {Action,
+  BuildProcessPacket,
+  Stage,
+  ActionRequest,
+  HMIRequestDefinition,
+  ProxyRequestDefinition,
+  HMIMessage,
+  ProxyResponse} from './buildp_interfaces';
+import axios, {AxiosRequestConfig} from 'axios';
 import config from 'config';
 
 let proxyHost:string;
@@ -11,10 +18,13 @@ let bpPort:number;
 let rabbitMqUrl:string;
 let exchange:string;
 
-const cmdTopic = 'action.cmd';
+const actionCmdTopic = 'action.cmd';
+const actionToUserTopic = 'action.touser';
+const actionToSeqTopic = 'action.toseq';
 const proxyAlertTopic = 'proxy.alert';
 const allBuildPTopic = 'buildp.all';
 const reportBuildPTopic = 'buildp.report';
+
 
 try {
   proxyHost = config.get<string>('enipProxy.hostname');
@@ -59,8 +69,9 @@ stream
             // bind messages on for action.cmd topic
             // action.cmd topic is for transmit data include parameters for
             // buildProcessor request
-            channel.bindQueue(queue.queue, exchange, cmdTopic);
+            channel.bindQueue(queue.queue, exchange, actionCmdTopic);
             channel.bindQueue(queue.queue, exchange, proxyAlertTopic);
+            channel.bindQueue(queue.queue, exchange, actionToSeqTopic);
 
             // handler for message reception on action.cmd topic
             channel.consume(queue.queue,
@@ -85,6 +96,11 @@ stream
         const dataBuffer = Buffer.from(JSON.stringify(report));
         channel.publish(exchange, reportBuildPTopic, dataBuffer);
       });
+
+      eventManager.on(actionToUserTopic, (data) => {
+        const dataBuffer = Buffer.from(JSON.stringify(data));
+        channel.publish(exchange, actionToUserTopic, dataBuffer);
+      });
     })
     .catch((error)=>{
       console.log(error);
@@ -100,7 +116,7 @@ async function processActionCmdMessage(msg:amqp.ConsumeMessage|null) {
   if (msg) {
     if (msg.fields.routingKey) {
       switch (msg.fields.routingKey) {
-        case cmdTopic:
+        case actionCmdTopic:
           const body = msg.content.toString();
           try {
             const bpResponse = await axios.request<BuildProcessPacket>({
@@ -144,6 +160,10 @@ async function processActionCmdMessage(msg:amqp.ConsumeMessage|null) {
           const proxyMsg = {status: 'SUCCESS'};
           eventManager.emit(proxyAlertTopic, proxyMsg);
           break;
+        case actionToSeqTopic:
+          const hmiMsg = {status: 'SUCCESS'};
+          eventManager.emit(actionToSeqTopic, hmiMsg);
+          break;
         default:
           console.log(msg);
       }
@@ -151,40 +171,21 @@ async function processActionCmdMessage(msg:amqp.ConsumeMessage|null) {
   }
 }
 
-interface ProxyPacket {
-  status:'ERROR'|'SUCCESS',
-  data?:object,
-  error?:object
-}
-
-interface StageReqPacket {
-  action:'REQUEST'|'WAIT',
-  description:string,
-  request?:RequestSettings
-}
-
-interface RequestSettings {
-  url:string,
-  method:string
-  body?:object
-}
-
-
 /**
  *
  * @param sequence
  */
 async function runSequence(sequence:Stage[]) {
-  const stageGen = stageGenerator(sequence);
+  const stageGen = stageGenerator<Stage>(sequence);
   return new Promise(async (resolve, reject)=> {
     while (true) {
       try {
         const stageIt = stageGen.next();
         if (!stageIt.done) {
-          const stage = <Stage>stageIt.value;
+          const stage = stageIt.value;
           console.log('Run sequence : '+ stage.description);
           // eslint-disable-next-line max-len
-          const status = await runSubSequence(stage.requestSequence);
+          const status = await runSubSequence(stage.requestSequence, stage.id);
           console.log(status);
           eventManager.emit(reportBuildPTopic,
               {
@@ -208,16 +209,16 @@ async function runSequence(sequence:Stage[]) {
  * @param subSequence
  * @returns
  */
-async function runSubSequence(subSequence:RequestStage[]) {
-  const stageReqGen = stageRequestGenerator(subSequence);
+async function runSubSequence(actionSequence:Action[], stageId:string) {
+  const stageActionGen = stageActionGenerator<ActionRequest>(actionSequence);
   return new Promise(async (resolve, reject)=>{
     while (true) {
       try {
-        const srIt = stageReqGen.next();
-        if (!srIt.done) {
+        const actionIteration = stageActionGen.next();
+        if (!actionIteration.done) {
           // eslint-disable-next-line max-len
-          console.log('run subsequence : ' + JSON.stringify(<StageReqPacket>srIt.value));
-          const status = await runStageRequest(<StageReqPacket>srIt.value);
+          const action = actionIteration.value;
+          const status = await runStageAction(action, stageId);
           console.log('subrequest : '+ status);
         } else {
           resolve(true);
@@ -236,24 +237,22 @@ async function runSubSequence(subSequence:RequestStage[]) {
  *
  * @param stageRequest
  */
-async function runStageRequest(stageRequest:StageReqPacket):Promise<string> {
+async function runStageAction(actionRequest:ActionRequest,
+    stageId:string):Promise<string> {
   return new Promise(async (resolve, reject)=>{
-    switch (stageRequest.action) {
-      case 'REQUEST':
+    switch (actionRequest.type) {
+      case 'REQUEST.PROXY':
         try {
-          const req = <RequestSettings>stageRequest.request;
-          const proxyResponse = await axios.request<ProxyPacket>({
-            method: <Method>req.method,
-            url: req.url,
-            data: req.body,
-            headers: {
-              'Content-type': 'application/json',
-            },
-          });
+          // get axiosConfig from actionRequest
+          const axiosReqPara = <AxiosRequestConfig>actionRequest.definition;
+          // send request
+          const proxyResponse = await axios
+              .request<ProxyResponse>(axiosReqPara);
 
-          // @ts-ignore
+          // get data from axio answer
           const proxyData = proxyResponse.data;
 
+          // process result
           if (proxyData.status) {
             resolve(proxyData.status);
           } else {
@@ -269,9 +268,8 @@ async function runStageRequest(stageRequest:StageReqPacket):Promise<string> {
           }
         }
         break;
-      case 'WAIT':
-        console.log('wait');
-        eventManager.once(proxyAlertTopic, (alertMsg:ProxyPacket)=>{
+      case 'WAIT.PROXY':
+        eventManager.once(proxyAlertTopic, (alertMsg:ProxyResponse)=>{
           // eslint-disable-next-line max-len
           console.log(alertMsg);
           if (alertMsg.status == 'SUCCESS') {
@@ -281,6 +279,15 @@ async function runStageRequest(stageRequest:StageReqPacket):Promise<string> {
           }
         });
         break;
+      case 'REQUEST.HMI':
+        const hmiReqDef = <HMIMessage>actionRequest.definition;
+        hmiReqDef.id = stageId;
+        eventManager.emit(actionToUserTopic, hmiReqDef);
+        break;
+      case 'WAIT.HMI':
+        eventManager.once(actionToSeqTopic, (hmiMsg:HMIMessage)=>{
+          resolve(hmiMsg.description);
+        });
       default:
         console.log('default');
     }
@@ -291,7 +298,7 @@ async function runStageRequest(stageRequest:StageReqPacket):Promise<string> {
  * @param sequence
  * @return
  */
-function* stageGenerator(sequence:Stage[]) {
+function* stageGenerator<Stage>(sequence:Stage[]) {
   let index = 0;
   while (index < sequence.length) {
     yield sequence[index];
@@ -304,43 +311,52 @@ function* stageGenerator(sequence:Stage[]) {
  *
  * @param reqStage
  */
-function* stageRequestGenerator(reqStage:RequestStage[]) {
+function* stageActionGenerator<ActionRequest>(reqStage:Action[]) {
   let index = 0;
   while (index<reqStage.length) {
     // get the next stage
+
     const reqObj = reqStage[index];
-    // get the stage definition
-    const reqDef = reqObj.definition;
+    let definition:AxiosRequestConfig|HMIMessage|undefined;
+    const atype = `${reqObj.action}.${reqObj.target}`;
 
-    // if query parameters, generate the url string
-    const querystr = reqDef.query ?
-        concatQueryParameter(<QueryObject>reqDef.query):
-        '';
-    const url = `http://${proxyHost}:${proxyPort}${reqDef.api}${querystr}`;
+    switch (atype) {
+      case 'REQUEST.PROXY':
+        const pdef = <ProxyRequestDefinition> reqObj.definition;
+        const querystr = pdef.query ?
+          concatQueryParameter(<QueryObject>pdef.query):
+          '';
 
-    // init the stage request packet
-    const srpacket:StageReqPacket = {
-      action: reqObj.action,
-      description: reqObj.description,
-    };
+        const url = `http://${proxyHost}:${proxyPort}${pdef.api}${querystr}`;
 
-    // if action is request
-    if (reqObj.action == 'REQUEST') {
-      // define a reqInit object with method and headers
-      const reqSet:RequestSettings = {
-        url: url,
-        method: reqDef.method,
-      };
-
-      // add a body on reqInit if exist
-      if (reqDef.body) reqSet.body = reqDef.body;
-
-      // add the request definition in the stage request packet
-      srpacket.request = reqSet;
+        definition = <AxiosRequestConfig>{
+          method: pdef.method,
+          data: pdef.body,
+          headers: {
+            'Content-type': 'application/json',
+          },
+          url: url,
+        };
+        break;
+      case 'REQUEST.HMI':
+        const hmiDef = <HMIRequestDefinition>reqObj.definition;
+        definition = <HMIMessage>{
+          message: hmiDef.message,
+          description: reqObj.description,
+        };
+        break;
+      default:
+        definition = undefined;
     }
 
+    // @ts-ignore
+    const actionRequest:ActionRequest = {
+      type: atype,
+      definition: definition,
+    };
+
     // yield the stage request packet
-    yield srpacket;
+    yield actionRequest;
     index++;
   }
 }

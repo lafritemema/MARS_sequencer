@@ -1,33 +1,51 @@
+import {AxiosRequestConfig} from 'axios';
 
 export interface BuildProcessPacket {
   sequence?:Stage[],
   status: 'SUCCESS'|'ERROR',
-  tree:Action[],
+  tree: object,
   error?:string,
 }
 
 export interface Stage {
   id:string,
   description:string,
-  requestSequence:RequestStage[],
+  requestSequence:Action[],
   type:string,
 }
 
 
-export interface RequestStage {
-  action:'REQUEST'|'WAIT',
+export interface Action {
+  action:'REQUEST'| 'WAIT',
+  target:'PROXY' | 'HMI',
   description:string,
-  definition:Definition,
+  definition: ProxyRequestDefinition | HMIRequestDefinition,
 }
 
-interface Definition {
+export interface ProxyRequestDefinition {
   api:string,
   body:object,
   method:'PUT'|'GET'|'SUBSCRIBE',
   query:object,
 }
 
-interface Action {
-  id:string,
-  description:string,
+export interface HMIRequestDefinition {
+  message:string
+}
+
+export interface ProxyResponse {
+  status:'ERROR'|'SUCCESS',
+  data?:object,
+  error?:object
+}
+
+export interface ActionRequest {
+  type: 'REQUEST.PROXY'| 'WAIT.PROXY' | 'REQUEST.HMI'| 'WAIT.HMI',
+  definition: AxiosRequestConfig<any> | HMIMessage | undefined
+}
+
+export interface HMIMessage {
+  id?:string
+  message:string,
+  description:string
 }

@@ -41,7 +41,9 @@ let bpHost;
 let bpPort;
 let rabbitMqUrl;
 let exchange;
-const cmdTopic = 'action.cmd';
+const actionCmdTopic = 'action.cmd';
+const actionToUserTopic = 'action.touser';
+const actionToSeqTopic = 'action.toseq';
 const proxyAlertTopic = 'proxy.alert';
 const allBuildPTopic = 'buildp.all';
 const reportBuildPTopic = 'buildp.report';
@@ -83,8 +85,9 @@ stream
         // bind messages on for action.cmd topic
         // action.cmd topic is for transmit data include parameters for
         // buildProcessor request
-        channel.bindQueue(queue.queue, exchange, cmdTopic);
+        channel.bindQueue(queue.queue, exchange, actionCmdTopic);
         channel.bindQueue(queue.queue, exchange, proxyAlertTopic);
+        channel.bindQueue(queue.queue, exchange, actionToSeqTopic);
         // handler for message reception on action.cmd topic
         channel.consume(queue.queue, processActionCmdMessage, { noAck: true });
     }).catch((error) => {
@@ -104,6 +107,10 @@ stream
         const dataBuffer = Buffer.from(JSON.stringify(report));
         channel.publish(exchange, reportBuildPTopic, dataBuffer);
     });
+    eventManager.on(actionToUserTopic, (data) => {
+        const dataBuffer = Buffer.from(JSON.stringify(data));
+        channel.publish(exchange, actionToUserTopic, dataBuffer);
+    });
 })
     .catch((error) => {
     console.log(error);
@@ -118,7 +125,7 @@ function processActionCmdMessage(msg) {
         if (msg) {
             if (msg.fields.routingKey) {
                 switch (msg.fields.routingKey) {
-                    case cmdTopic:
+                    case actionCmdTopic:
                         const body = msg.content.toString();
                         try {
                             const bpResponse = yield axios_1.default.request({
@@ -164,6 +171,10 @@ function processActionCmdMessage(msg) {
                         const proxyMsg = { status: 'SUCCESS' };
                         eventManager.emit(proxyAlertTopic, proxyMsg);
                         break;
+                    case actionToSeqTopic:
+                        const hmiMsg = { status: 'SUCCESS' };
+                        eventManager.emit(actionToSeqTopic, hmiMsg);
+                        break;
                     default:
                         console.log(msg);
                 }
@@ -186,7 +197,7 @@ function runSequence(sequence) {
                         const stage = stageIt.value;
                         console.log('Run sequence : ' + stage.description);
                         // eslint-disable-next-line max-len
-                        const status = yield runSubSequence(stage.requestSequence);
+                        const status = yield runSubSequence(stage.requestSequence, stage.id);
                         console.log(status);
                         eventManager.emit(reportBuildPTopic, {
                             id: stage.id,
@@ -211,17 +222,17 @@ function runSequence(sequence) {
  * @param subSequence
  * @returns
  */
-function runSubSequence(subSequence) {
+function runSubSequence(actionSequence, stageId) {
     return __awaiter(this, void 0, void 0, function* () {
-        const stageReqGen = stageRequestGenerator(subSequence);
+        const stageActionGen = stageActionGenerator(actionSequence);
         return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
             while (true) {
                 try {
-                    const srIt = stageReqGen.next();
-                    if (!srIt.done) {
+                    const actionIteration = stageActionGen.next();
+                    if (!actionIteration.done) {
                         // eslint-disable-next-line max-len
-                        console.log('run subsequence : ' + JSON.stringify(srIt.value));
-                        const status = yield runStageRequest(srIt.value);
+                        const action = actionIteration.value;
+                        const status = yield runStageAction(action, stageId);
                         console.log('subrequest : ' + status);
                     }
                     else {
@@ -242,23 +253,20 @@ function runSubSequence(subSequence) {
  *
  * @param stageRequest
  */
-function runStageRequest(stageRequest) {
+function runStageAction(actionRequest, stageId) {
     return __awaiter(this, void 0, void 0, function* () {
         return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-            switch (stageRequest.action) {
-                case 'REQUEST':
+            switch (actionRequest.type) {
+                case 'REQUEST.PROXY':
                     try {
-                        const req = stageRequest.request;
-                        const proxyResponse = yield axios_1.default.request({
-                            method: req.method,
-                            url: req.url,
-                            data: req.body,
-                            headers: {
-                                'Content-type': 'application/json',
-                            },
-                        });
-                        // @ts-ignore
+                        // get axiosConfig from actionRequest
+                        const axiosReqPara = actionRequest.definition;
+                        // send request
+                        const proxyResponse = yield axios_1.default
+                            .request(axiosReqPara);
+                        // get data from axio answer
                         const proxyData = proxyResponse.data;
+                        // process result
                         if (proxyData.status) {
                             resolve(proxyData.status);
                         }
@@ -277,8 +285,7 @@ function runStageRequest(stageRequest) {
                         }
                     }
                     break;
-                case 'WAIT':
-                    console.log('wait');
+                case 'WAIT.PROXY':
                     eventManager.once(proxyAlertTopic, (alertMsg) => {
                         // eslint-disable-next-line max-len
                         console.log(alertMsg);
@@ -290,6 +297,15 @@ function runStageRequest(stageRequest) {
                         }
                     });
                     break;
+                case 'REQUEST.HMI':
+                    const hmiReqDef = actionRequest.definition;
+                    hmiReqDef.id = stageId;
+                    eventManager.emit(actionToUserTopic, hmiReqDef);
+                    break;
+                case 'WAIT.HMI':
+                    eventManager.once(actionToSeqTopic, (hmiMsg) => {
+                        resolve(hmiMsg.description);
+                    });
                 default:
                     console.log('default');
             }
@@ -311,38 +327,46 @@ function* stageGenerator(sequence) {
  *
  * @param reqStage
  */
-function* stageRequestGenerator(reqStage) {
+function* stageActionGenerator(reqStage) {
     let index = 0;
     while (index < reqStage.length) {
         // get the next stage
         const reqObj = reqStage[index];
-        // get the stage definition
-        const reqDef = reqObj.definition;
-        // if query parameters, generate the url string
-        const querystr = reqDef.query ?
-            concatQueryParameter(reqDef.query) :
-            '';
-        const url = `http://${proxyHost}:${proxyPort}${reqDef.api}${querystr}`;
-        // init the stage request packet
-        const srpacket = {
-            action: reqObj.action,
-            description: reqObj.description,
-        };
-        // if action is request
-        if (reqObj.action == 'REQUEST') {
-            // define a reqInit object with method and headers
-            const reqSet = {
-                url: url,
-                method: reqDef.method,
-            };
-            // add a body on reqInit if exist
-            if (reqDef.body)
-                reqSet.body = reqDef.body;
-            // add the request definition in the stage request packet
-            srpacket.request = reqSet;
+        let definition;
+        const atype = `${reqObj.action}.${reqObj.target}`;
+        switch (atype) {
+            case 'REQUEST.PROXY':
+                const pdef = reqObj.definition;
+                const querystr = pdef.query ?
+                    concatQueryParameter(pdef.query) :
+                    '';
+                const url = `http://${proxyHost}:${proxyPort}${pdef.api}${querystr}`;
+                definition = {
+                    method: pdef.method,
+                    data: pdef.body,
+                    headers: {
+                        'Content-type': 'application/json',
+                    },
+                    url: url,
+                };
+                break;
+            case 'REQUEST.HMI':
+                const hmiDef = reqObj.definition;
+                definition = {
+                    message: hmiDef.message,
+                    description: reqObj.description,
+                };
+                break;
+            default:
+                definition = undefined;
         }
+        // @ts-ignore
+        const actionRequest = {
+            type: atype,
+            definition: definition,
+        };
         // yield the stage request packet
-        yield srpacket;
+        yield actionRequest;
         index++;
     }
 }
