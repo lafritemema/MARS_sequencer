@@ -290,6 +290,7 @@ async function runStageAction(actionRequest:ActionRequest):Promise<string> {
         eventManager.once(actionToSeqTopic, (hmiMsg:HMIMessage)=>{
           resolve(hmiMsg.description);
         });
+        break;
       default:
         console.log('default');
         reject('error');

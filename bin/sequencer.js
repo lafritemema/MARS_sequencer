@@ -308,6 +308,7 @@ function runStageAction(actionRequest) {
                     eventManager.once(actionToSeqTopic, (hmiMsg) => {
                         resolve(hmiMsg.description);
                     });
+                    break;
                 default:
                     console.log('default');
                     reject('error');
