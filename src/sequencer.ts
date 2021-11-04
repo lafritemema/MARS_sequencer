@@ -210,15 +210,16 @@ async function runSequence(sequence:Stage[]) {
  * @returns
  */
 async function runSubSequence(actionSequence:Action[], stageId:string) {
-  const stageActionGen = stageActionGenerator<ActionRequest>(actionSequence);
+  const stageActionGen = stageActionGenerator<ActionRequest>(actionSequence,
+      stageId);
   return new Promise(async (resolve, reject)=>{
     while (true) {
       try {
         const actionIteration = stageActionGen.next();
         if (!actionIteration.done) {
           // eslint-disable-next-line max-len
-          const action = actionIteration.value;
-          const status = await runStageAction(action, stageId);
+          const actionRequest = actionIteration.value;
+          const status = await runStageAction(actionRequest);
           console.log('subrequest : '+ status);
         } else {
           resolve(true);
@@ -237,9 +238,10 @@ async function runSubSequence(actionSequence:Action[], stageId:string) {
  *
  * @param stageRequest
  */
-async function runStageAction(actionRequest:ActionRequest,
-    stageId:string):Promise<string> {
+async function runStageAction(actionRequest:ActionRequest):Promise<string> {
   return new Promise(async (resolve, reject)=>{
+    // eslint-disable-next-line max-len
+    console.log(`Run action ${actionRequest.description}, type : ${actionRequest.type}`);
     switch (actionRequest.type) {
       case 'REQUEST.PROXY':
         try {
@@ -281,8 +283,8 @@ async function runStageAction(actionRequest:ActionRequest,
         break;
       case 'REQUEST.HMI':
         const hmiReqDef = <HMIMessage>actionRequest.definition;
-        hmiReqDef.id = stageId;
         eventManager.emit(actionToUserTopic, hmiReqDef);
+        resolve('SUCCESS');
         break;
       case 'WAIT.HMI':
         eventManager.once(actionToSeqTopic, (hmiMsg:HMIMessage)=>{
@@ -290,6 +292,7 @@ async function runStageAction(actionRequest:ActionRequest,
         });
       default:
         console.log('default');
+        reject('error');
     }
   });
 }
@@ -311,7 +314,8 @@ function* stageGenerator<Stage>(sequence:Stage[]) {
  *
  * @param reqStage
  */
-function* stageActionGenerator<ActionRequest>(reqStage:Action[]) {
+function* stageActionGenerator<ActionRequest>(reqStage:Action[],
+    stageId:string) {
   let index = 0;
   while (index<reqStage.length) {
     // get the next stage
@@ -341,6 +345,7 @@ function* stageActionGenerator<ActionRequest>(reqStage:Action[]) {
       case 'REQUEST.HMI':
         const hmiDef = <HMIRequestDefinition>reqObj.definition;
         definition = <HMIMessage>{
+          id: stageId,
           message: hmiDef.message,
           description: reqObj.description,
         };
@@ -351,6 +356,7 @@ function* stageActionGenerator<ActionRequest>(reqStage:Action[]) {
 
     // @ts-ignore
     const actionRequest:ActionRequest = {
+      stageId: stageId,
       type: atype,
       definition: definition,
     };

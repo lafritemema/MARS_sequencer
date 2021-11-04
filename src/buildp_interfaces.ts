@@ -18,7 +18,7 @@ export interface Stage {
 export interface Action {
   action:'REQUEST'| 'WAIT',
   target:'PROXY' | 'HMI',
-  description:string,
+  description: string,
   definition: ProxyRequestDefinition | HMIRequestDefinition,
 }
 
@@ -41,11 +41,13 @@ export interface ProxyResponse {
 
 export interface ActionRequest {
   type: 'REQUEST.PROXY'| 'WAIT.PROXY' | 'REQUEST.HMI'| 'WAIT.HMI',
+  stageId:string,
+  description: string,
   definition: AxiosRequestConfig<any> | HMIMessage | undefined
 }
 
 export interface HMIMessage {
-  id?:string
+  id:string
   message:string,
   description:string
 }
