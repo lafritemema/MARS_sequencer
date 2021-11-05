@@ -10,14 +10,57 @@ import {Action,
   ProxyResponse} from './buildp_interfaces';
 import axios, {AxiosRequestConfig} from 'axios';
 import config from 'config';
+import Logger from './logger';
 
+const logger = new Logger();
+
+logger.info('Run sequencer service');
+
+// event emitter to handle and emit events between elements
+const eventManager = new EventEmitter();
+// eslint-disable-next-line no-unused-vars
+let isRunningSequence = false;
+
+
+// define var for configuration
 let proxyHost:string;
 let proxyPort:number;
 let bpHost:string;
 let bpPort:number;
 let rabbitMqUrl:string;
 let exchange:string;
+let resolution:Record<string, string>|undefined;
 
+if (config.has('resolutionMessage')) {
+  resolution = config.get('resolutionMessage');
+}
+
+// get configuration using config library
+try {
+  // try to get config
+  logger.try('Load configuration');
+
+  proxyHost = config.get<string>('enipProxy.hostname');
+  proxyPort = config.get<number>('enipProxy.port');
+  bpHost = config.get<string>('buildProcessor.hostname');
+  bpPort = config.get<number>('buildProcessor.port');
+  rabbitMqUrl = config.get<string>('rabbitMq.url');
+  exchange = config.get('rabbitMq.exchange');
+
+  logger.success('Load configuration');
+} catch (error) {
+  // if one element missing raise an error and quit the process
+  logger.failure('Load configuration');
+  logger.error('Error on configuration file : ' + (<Error> error).message);
+
+  if (resolution && ('configuration' in resolution)) {
+    logger.resolution(resolution['configuration']);
+  }
+  process.exit(1);
+}
+
+
+// define topics for amqp com via rabbitmq
 const actionCmdTopic = 'action.cmd';
 const actionToUserTopic = 'action.touser';
 const actionToSeqTopic = 'action.toseq';
@@ -25,35 +68,20 @@ const proxyAlertTopic = 'proxy.alert';
 const allBuildPTopic = 'buildp.all';
 const reportBuildPTopic = 'buildp.report';
 
-
-try {
-  proxyHost = config.get<string>('enipProxy.hostname');
-  proxyPort = config.get<number>('enipProxy.port');
-  bpHost = config.get<string>('buildProcessor.hostname');
-  bpPort = config.get<number>('buildProcessor.port');
-  rabbitMqUrl = config.get<string>('rabbitMq.url');
-  exchange = config.get('rabbitMq.exchange');
-} catch (error) {
-  console.log('Error on configuration file.');
-  console.log((<Error> error).message);
-  process.exit(1);
-}
-
-
-// amqp stream connection
+// connection to rabbitMq server
+logger.try('Connection to RabbitMQ Server');
 const stream = amqp.connect(rabbitMqUrl);
 
-const eventManager = new EventEmitter();
-// const available = true;
 
-
-// stream definition
+// Initialize amqp communication with rabbitmq server
 stream
     .then((connection: amqp.Connection)=> {
       // channel creation
+      logger.success('Connection to RabbitMQ Server');
       return connection.createChannel();
     })
     .then((channel: amqp.Channel)=> {
+      logger.try('Configure AMQP communications');
       // when channel create
       // define assertion on exchange node in topic mode (not durable message)
       channel.assertExchange(exchange, 'topic', {
@@ -63,23 +91,28 @@ stream
       // define assertion on non define queue
       channel.assertQueue('', {
         exclusive: true,
-      })
-          .then((queue:amqp.Replies.AssertQueue) => {
-            console.log('wait cmd message');
-            // bind messages on for action.cmd topic
-            // action.cmd topic is for transmit data include parameters for
-            // buildProcessor request
-            channel.bindQueue(queue.queue, exchange, actionCmdTopic);
-            channel.bindQueue(queue.queue, exchange, proxyAlertTopic);
-            channel.bindQueue(queue.queue, exchange, actionToSeqTopic);
+      }).then((queue:amqp.Replies.AssertQueue) => {
+        // bind (subscribe) for specific topics
+        // action.cmd topic for ihm command message
+        channel.bindQueue(queue.queue, exchange, actionCmdTopic);
+        // proxy.alert topic for proxy alert message
+        channel.bindQueue(queue.queue, exchange, proxyAlertTopic);
+        // action.toseq topic for ihm action message
+        channel.bindQueue(queue.queue, exchange, actionToSeqTopic);
 
-            // handler for message reception on action.cmd topic
-            channel.consume(queue.queue,
-                processActionCmdMessage,
-                {noAck: true});
-          }).catch((error:Error)=>{
-            console.log(error);
-          });
+        // define a handler for message reception on all the topics
+        // define above
+        // for each message it run processRabbitMqMessage function
+        channel.consume(queue.queue,
+            processRabbitMqMessage,
+            {noAck: true});
+
+        logger.success('Configure AMQP communications');
+        logger.info('Sequencer service ready');
+        logger.info('Wait for IHM command message');
+      }).catch((error:Error)=>{
+        console.log(error);
+      });
 
       // handler for eventmanager buildp.all event
       eventManager.on(allBuildPTopic, (data:object)=>{
@@ -103,7 +136,13 @@ stream
       });
     })
     .catch((error)=>{
-      console.log(error);
+      logger.failure('Connection to RabbitMQ Server');
+      logger.error((<Error>error).message);
+
+      if (resolution && ('rabbitMQ' in resolution)) {
+        logger.resolution(resolution['rabbitMQ']);
+      }
+      process.exit(1);
     });
 
 
@@ -112,45 +151,58 @@ stream
  * => send a request to build processor
  * @param {ConsumeMessage} msg message received on topic
  */
-async function processActionCmdMessage(msg:amqp.ConsumeMessage|null) {
+async function processRabbitMqMessage(msg:amqp.ConsumeMessage|null) {
   if (msg) {
     if (msg.fields.routingKey) {
       switch (msg.fields.routingKey) {
         case actionCmdTopic:
-          const body = msg.content.toString();
-          try {
-            const bpResponse = await axios.request<BuildProcessPacket>({
-              method: 'get',
-              url: `http://${bpHost}:${bpPort}/sequence/move`,
-              data: body,
-              headers: {
-                'Content-type': 'application/json',
-              },
-            });
+          if (! isRunningSequence) {
+            logger.info('Commande to run sequence received from IHM');
+            const body = msg.content.toString();
+            try {
+              logger.try('Send request to build processor');
+              const bpResponse = await axios.request<BuildProcessPacket>({
+                method: 'get',
+                url: `http://${bpHost}:${bpPort}/sequence/move`,
+                data: body,
+                headers: {
+                  'Content-type': 'application/json',
+                },
+              });
 
-            // @ts-ignore
-            const bpData = bpResponse.data;
+              // @ts-ignore
+              const bpData = bpResponse.data;
 
-            if (bpData.status == 'SUCCESS') {
-              // emit an event buildp.all with data.tree (for IHM)
-              eventManager.emit(allBuildPTopic, bpData.tree);
-              try {
-                const status = await runSequence(<Stage[]>bpData.sequence);
-                console.log('FIN : '+status);
-              } catch (error) {
-                console.log('FIN: '+ error);
+              if (bpData.status == 'SUCCESS') {
+                // emit an event buildp.all with data.tree (for IHM)
+                eventManager.emit(allBuildPTopic, bpData.tree);
+                try {
+                  isRunningSequence = true;
+                  const status = await runSequence(<Stage[]>bpData.sequence);
+                  console.log('FIN : '+ status);
+                  isRunningSequence = false;
+                } catch (error) {
+                  console.log('FIN: '+ error);
+                }
+              } else {
+                console.log(bpResponse);
               }
-            } else {
-              console.log(bpResponse);
+            } catch (error) {
+              // @ts-ignore
+              logger.failure('Send request to build processor');
+              logger.error('Build processor service unreachable');
+              logger.error((<Error>error).message);
+
+              if (resolution && ('buildProcessor' in resolution)) {
+                logger.resolution(resolution['buildProcessor']);
+              }
+
+              logger.warn('Sequence aborted');
+              logger.info('Wait for new IHM command message');
             }
-          } catch (bpResponse) {
-            // @ts-ignore
-            const bpData = bpResponse.data;
-            if (bpData.error) {
-              console.log(bpData.error);
-            } else {
-              console.log(bpData);
-            }
+          } else {
+            // eslint-disable-next-line max-len
+            logger.warn('Request for a new sequence received but sequencer already running.\nRequest ignored');
           }
           break;
         case proxyAlertTopic:
