@@ -69,7 +69,7 @@
     "seqMsg":{
       "actionType": "work",
       "element": "fastener",
-      "side": ["RIGHT"],
+      "side": ["LEFT"],
       "position":["FORWARD"],
       "area":["FLANGE"],
       "location":{
