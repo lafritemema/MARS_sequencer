@@ -4,7 +4,7 @@ const Level:Record<string, (msg:string)=>void>= {
   'INFO': chalk.white,
   'WARNING': chalk.yellow,
   'ERROR': chalk.bold.red,
-  'FIX': chalk.bold.cyan,
+  'DEBUG': chalk.bold.cyan,
   'SUCCESS': chalk.green,
 };
 
@@ -69,11 +69,11 @@ export default class Logger {
   }
 
   /**
-   * log resolution message
+   * log debug message
    * @param {string} message resolution message
    */
-  public resolution(message:string):void {
-    const mes = buildMessage('FIX', message);
+  public debug(message:string):void {
+    const mes = buildMessage('DEBUG', message);
     console.info(mes);
   }
 }
