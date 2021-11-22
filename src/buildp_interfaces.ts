@@ -1,9 +1,9 @@
 import {AxiosRequestConfig} from 'axios';
 
-export interface BuildProcessPacket {
+export interface BuildProcessorResponse {
   sequence?:Stage[],
   status: 'SUCCESS'|'ERROR',
-  tree: object,
+  processTree: TreeStep[],
   error?:string,
 }
 
@@ -13,7 +13,6 @@ export interface Stage {
   requestSequence:Action[],
   type:string,
 }
-
 
 export interface Action {
   action:'REQUEST'| 'WAIT',
@@ -36,18 +35,43 @@ export interface HMIRequestDefinition {
 export interface ProxyResponse {
   status:'ERROR'|'SUCCESS',
   data?:object,
-  error?:object
+  error?:string
+}
+
+export interface ProxyAlert {
+  type: 'TRACKER',
+  status: 'SUCCESS' | 'ERROR'
+  error?:string
 }
 
 export interface ActionRequest {
   type: 'REQUEST.PROXY'| 'WAIT.PROXY' | 'REQUEST.HMI'| 'WAIT.HMI',
   stageId:string,
   description: string,
-  definition: AxiosRequestConfig<any> | HMIMessage | undefined
+  definition: AxiosRequestConfig<any> | HMIRequest | undefined
 }
 
-export interface HMIMessage {
-  id:string
+export interface HMIRequest {
+  id:string,
   message:string,
-  description:string
+  description:string,
+}
+
+
+export interface TreeStep {
+  stepStages:TreeStage[]
+}
+export interface TreeStage {
+  id:string,
+  type:string,
+  description:string,
+}
+
+export interface Status{
+  status: 'SUCCESS' | 'ERROR'
+  error?:string,
+}
+
+export interface ProcessStageStatus extends Status {
+  id: string
 }
