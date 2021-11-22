@@ -8,7 +8,7 @@ const Level = {
     'INFO': chalk_1.default.white,
     'WARNING': chalk_1.default.yellow,
     'ERROR': chalk_1.default.bold.red,
-    'FIX': chalk_1.default.bold.cyan,
+    'DEBUG': chalk_1.default.bold.cyan,
     'SUCCESS': chalk_1.default.green,
 };
 /**
@@ -65,11 +65,11 @@ class Logger {
         console.info(mes + Level['ERROR'](' FAILURE'));
     }
     /**
-     * log resolution message
+     * log debug message
      * @param {string} message resolution message
      */
-    resolution(message) {
-        const mes = buildMessage('FIX', message);
+    debug(message) {
+        const mes = buildMessage('DEBUG', message);
         console.info(mes);
     }
 }
