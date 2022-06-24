@@ -1,0 +1,12 @@
+amqp:
+  activate: true
+  type: 'rabbitmq'
+  host: 'debianvm'
+  port: 5672
+  exchange: 
+    name: 'mars'
+    type: 'topic'
+http:
+  port: 8005
+  host: 'localhost'
+  activate: false

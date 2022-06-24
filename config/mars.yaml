@@ -1,0 +1,17 @@
+services:
+  build_processor: 
+    protocol: "amqp"
+    definition: 
+      topics:
+        request: "request.build_processor"
+    paths:
+      approach: "/sequence/approach"
+      work: "/sequence/work"
+      station: "/sequence/station"
+  command_generator:
+    protocol: "amqp"
+    definition: 
+      topics:
+        request: "request.build_processor"
+    paths:
+      commands: "/commands/generate"
