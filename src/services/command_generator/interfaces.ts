@@ -7,12 +7,16 @@ export interface CommandGenReport{
 
 export interface Command {
   action:string // 'REQUEST'|'WAIT',
-  definition:CommandDefinition,
+  definition:CommandDefinition|WaitDefinition,
   description:string,
   target:string // 'PROXY'|'HMI',
   uid:string,
 }
 
 export interface RequestBody {
-  id:string
+  uid:string
+}
+
+export interface WaitDefinition {
+  uid:string,
 }
