@@ -1,0 +1,49 @@
+sequenceToRun: runAllStations
+definitions:
+  runAllStations :
+    description: run all station deplacements
+    path: /sequence/station
+    body:
+      goalsDefinition:
+        definitionType: area
+        definition:
+          railArea: all
+          rails: all
+  runAllApproach:
+    description: run all approach movements
+    path: /sequence/approach
+    body:
+      goalsDefinition:
+        definitionType: area
+        definition:
+          railArea: all
+          rails: all
+  runAllWorks:
+    description: run all works movements
+    path: /sequence/work
+    body:
+      goalsDefinition:
+        definitionType: area
+        definition:
+          railArea: all
+          rails: all
+  runWorksTwoRails:
+    description: run works movements for 2 rails
+    path: /sequence/work
+    body:
+      goalsDefinition:
+        definitionType: area
+        definition:
+          railArea: all
+          rails:
+            - y-254
+            - y+254
+  runWorksFlangeAllRails:
+    description: run works movements for flange area for all rails
+    path: /sequence/work
+    body:
+      goalsDefinition:
+        definitionType: area
+        definition:
+          railArea: flange
+          rails: all
