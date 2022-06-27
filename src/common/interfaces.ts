@@ -1,4 +1,3 @@
-
 export interface ExceptionDescription {
   origin:string,
   default:string,
@@ -7,3 +6,4 @@ export interface ExceptionDescription {
 
 export interface Configuration {
 }
+
