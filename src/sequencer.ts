@@ -6,7 +6,8 @@ import {
   ConsumerPacket,
   MessageQuery,
   MessageHeaders,
-  MessageBody} from './server/interfaces';
+  MessageBody,
+  RequestDefinition} from './server/interfaces';
 import {
   Action,
   BuildProcessReport,
@@ -17,6 +18,9 @@ import {CommandGenReport,
   WaitDefinition} from './services/command_generator/interfaces';
 import {buildBodyFromAction} from './services/command_generator';
 import {EventEmitter} from 'stream';
+import axios, {AxiosRequestConfig} from 'axios';
+import {AssetReportBody} from './services/assets/interfaces';
+import { cp } from 'fs';
 
 
 // eslint-disable-next-line no-unused-vars
@@ -30,9 +34,11 @@ const enum TOPIC {
   // eslint-disable-next-line no-unused-vars
   CMD_GENERATOR_REPORT = 'report.sequencer.command_generator',
   // eslint-disable-next-line no-unused-vars
-  HMI_REPORT = 'report.hmi',
+  HMI_REPORT = 'report.sequencer.hmi',
   // eslint-disable-next-line no-unused-vars
   HMI_REQUEST = 'request.hmi',
+  // eslint-disable-next-line no-unused-vars
+  REPORT_TO_HMI = 'report.hmi',
   // eslint-disable-next-line no-unused-vars
   COMMAND_GENERATOR_REQUEST = 'request.command_generator',
   // eslint-disable-next-line no-unused-vars
@@ -44,9 +50,9 @@ const enum TOPIC {
 // eslint-disable-next-line no-unused-vars
 const enum PATH {
   // eslint-disable-next-line no-unused-vars
-  HMI_SEQUENCE_ALL = '/sequencer/all',
+  HMI_BP_ALL = '/buildProcess/all',
   // eslint-disable-next-line no-unused-vars
-  HMI_SEQUENCE_STATUS = '/sequencer/status',
+  HMI_BP_STATUS = '/buildProcess/status',
   // eslint-disable-next-line no-unused-vars
   CMDGEN_CMD_GENERATE = '/commands/generate',
 }
@@ -106,7 +112,10 @@ getConfigFromYaml<ServerConfiguration>('./config/server.yaml')
             // add a consumer to process the list of actions send by build processor
             .addConsumer(TOPIC.BUILD_PROCESSOR_REPORT,
                 runBuildProcess)
-            .addConsumer(TOPIC.PROXY_REPORT, processProxyReport);
+            .addConsumer(TOPIC.PROXY_REPORT,
+                processProxyReport)
+            .addConsumer(TOPIC.HMI_REPORT,
+                processHmiReport);
 
         LOGGER.info('run server');
         amqpServer.run();
@@ -145,17 +154,15 @@ async function sendRequestToBuildProcessor(cPacket:ConsumerPacket) {
  * @param {ConsumerPacket} cPacket : consumer packet
  */
 function sendBuildProcessToHmi(cPacket:ConsumerPacket) {
-  // no update of body
-  // update the query with hmi report topic
-  cPacket.query = {
+  // no update of body, it already contains build process
+  // update the query with hmi report topic and path
+  cPacket.query = <MessageQuery>{
     type: 'amqp',
-    topic: TOPIC.HMI_REPORT,
+    topic: TOPIC.REPORT_TO_HMI,
+    path: PATH.HMI_BP_ALL,
   };
 
-  // update the path with the HMIT sequencer/all path
-  cPacket.headers = {
-    path: PATH.HMI_SEQUENCE_ALL,
-  };
+  cPacket.headers = <MessageHeaders>{};
 
   // publish using the server
   amqpServer.publish(cPacket);
@@ -170,11 +177,22 @@ async function runBuildProcess(cPacket:ConsumerPacket) {
   const bpReport = <BuildProcessReport>cPacket.body;
 
   const actions = bpReport.buildProcess;
+  LOGGER.info('run build process');
 
-  actions.forEach(async (action:Action)=>{
+  for (const action of actions) {
+    LOGGER.info(`run action ${action.uid} : ${action.description}`);
     const result = await runAction(action);
-    console.log(result);
-  });
+
+    if (result == 'ERROR') {
+      LOGGER.error(`error during action ${action.uid} : ${action.description}`);
+      LOGGER.debug('use the manual robot commands to put the robot in a safe position');
+      break;
+    }
+
+    const cPacket = buildHMIStatusCPacket(action.uid, result);
+    amqpServer.publish(cPacket);
+  }
+  LOGGER.info('end of process');
 }
 
 /**
@@ -183,19 +201,23 @@ async function runBuildProcess(cPacket:ConsumerPacket) {
  * @return {Promise<string>}
  */
 async function runAction(action:Action):Promise<string> {
-  LOGGER.info(`run action ${action.uid} : ${action.description}`);
-
   LOGGER.try('request commands to command generator');
   const commands = await getCommandsForAction(action);
   LOGGER.success('request commands to command generator service');
 
-  commands.forEach(async (command:Command)=>{
-    LOGGER.debug(`run command ${command.description}`);
-    // const result = await runCommand(command);
-  });
+  let actionResultStatus = 'SUCCESS';
 
-  // TODO
-  return 'success';
+  for (const cmd of commands) {
+    try {
+      LOGGER.debug(`run command ${cmd.description}`);
+      const result = await runCommand(cmd);
+    } catch (error) {
+      LOGGER.failure((`run command ${cmd.description}`));
+      actionResultStatus = 'ERROR';
+      break;
+    }
+  }
+  return actionResultStatus;
 }
 
 /**
@@ -203,18 +225,28 @@ async function runAction(action:Action):Promise<string> {
  * @param {Command} command : command to run
  * @return {Promise<string>}
  */
-function runCommand(command:Command):Promise<string> {
+function runCommand(command:Command):Promise<AssetReportBody> {
   return new Promise((resolve, reject) => {
     switch (command.action) {
       case 'REQUEST':
         // send a request using the current protocol
         // all needed data are stored in the command
+        POSTMAN.once(command.uid, (response:AssetReportBody)=>{
+          if (response.status == 'SUCCESS') {
+            resolve(response);
+          } else {
+            reject(response);
+          }
+        });
         sendRequest(comProtocol, command);
       case 'WAIT':
         const waitDef = <WaitDefinition> command.definition;
-        POSTMAN.once(waitDef.uid, (response)=>{
-          console.log(response);
-          resolve(response);
+        POSTMAN.once(waitDef.uid, (response:AssetReportBody)=>{
+          if (response.status == 'SUCCESS') {
+            resolve(response);
+          } else {
+            reject(response);
+          }
         });
         break;
     }
@@ -233,9 +265,6 @@ function getCommandsForAction(action:Action):Promise<Command[]> {
     // build the consumer packet
     const cPacket = buildCPacketFromAction(comProtocol, action);
 
-    // publish using amqpServer
-    amqpServer.publish(cPacket);
-
     // wait a postman event to return a result
     // POSTMAN emit send in the processCmdGenReport
     // use the unique action uid as event name
@@ -243,6 +272,8 @@ function getCommandsForAction(action:Action):Promise<Command[]> {
       resolve(commands);
     });
 
+    // publish using amqpServer
+    amqpServer.publish(cPacket);
     // TODO action if commandGen error.
   });
 }
@@ -256,8 +287,13 @@ function getCommandsForAction(action:Action):Promise<Command[]> {
  */
 function sendRequest(protocol:PROTOCOL, command:Command) {
   // only for amqp yet
-  const cPacket = buildCPacketFromReqCommand(comProtocol, command);
-  amqpServer.publish(cPacket);
+
+  if (command.target == 'HMI') {
+    const cPacket = buildCPacketFromReqCommand(comProtocol, command);
+    amqpServer.publish(cPacket);
+  } else {
+    sendHTTPProxyRequest(command);
+  }
 }
 
 
@@ -333,7 +369,7 @@ function buildCPacketFromAction(protocol:PROTOCOL,
  */
 function buildCPacketFromReqCommand(protocol:PROTOCOL, command:Command):ConsumerPacket {
   // const {action, definition, description, target, uid} = command;
-  const commandDef = command.definition;
+  const commandDef = <RequestDefinition>command.definition;
   let topic:TOPIC;
   const _headers = <MessageHeaders> {
     uid: command.uid,
@@ -346,7 +382,7 @@ function buildCPacketFromReqCommand(protocol:PROTOCOL, command:Command):Consumer
       break;
     case 'HMI':
       topic = TOPIC.HMI_REQUEST;
-      // reportTopic = TOPIC.HMI_REPORT;
+      _headers['report_topic'] = TOPIC.HMI_REPORT;
       break;
     default:
       // TODO raise the error
@@ -394,16 +430,107 @@ function processProxyReport(cPacket:ConsumerPacket):ConsumerPacket {
   // TODO to define
   // const uid = <string> cPacket.headers.uid;
   // POSTMAN.emit(uid, cPacket.body);
+  const _headers = cPacket.headers;
+  const _body = cPacket.body;
+  POSTMAN.emit(_headers['uid'], _body);
   return cPacket;
+}
+/**
+ * fonction to process report from hmi
+ * @param {ConsumerPacket} cPacket : consumer packet
+ */
+function processHmiReport(cPacket:ConsumerPacket) {
+  const headers = cPacket.headers;
+  POSTMAN.emit(headers['uid'], <AssetReportBody>cPacket.body);
+}
+
+export interface ProxyResponse {
+  status:'ERROR'|'SUCCESS',
+  data?:object,
+  error?:string
 }
 
 /**
- * consuming function to process report from hmi
- * @param cPacket
- * @returns
+ * temporary function to test proxy
+ * @param {Command} command : command to send
+ * @return {Promise<string>}
+ */
+async function sendHTTPProxyRequest(command:Command) {
+  const PROXYHOST = '127.0.0.1';
+  const PROXYPORT = 8000;
+  const cmdDef = <RequestDefinition> command.definition;
 
-function processHmiReport(cPacket:ConsumerPacket):ConsumerPacket {
-  // TODO to define
-  return cPacket;
+  try {
+    let url = `http://${PROXYHOST}:${PROXYPORT}${cmdDef.path}`;
+    
+    if (cmdDef.query) {
+      const queryStr = concatQueryParameter(cmdDef.query);
+      url+=queryStr;
+    }
+    console.log(url);
+    const axiosRequest = <AxiosRequestConfig>{
+      method: cmdDef.method,
+      data: cmdDef.body,
+      headers: {
+        'Content-type': 'application/json',
+        'uid': command.uid,
+      },
+      url: url,
+    };
+
+    // send request to proxy using axios
+    const proxyResponse = await axios.request<ProxyResponse>(axiosRequest);
+
+    // get data from axios answer
+    const proxyData = proxyResponse.data;
+    const cmdId = proxyResponse.headers['uid'];
+
+    POSTMAN.emit(cmdId, proxyData);
+  } catch (error) {
+    POSTMAN.emit(command.uid,
+      <AssetReportBody>{status: 'ERROR', error: error});
+  }
 }
-*/
+
+/**
+ * transform query parameter object to string
+ * @param {object} queryObj query parameter object
+ * @return {string} string under query parameter format
+ */
+function concatQueryParameter(queryObj:object):string {
+  // empty string list
+  const queryList:string[] = [];
+
+  // eslint-disable-next-line guard-for-in
+  for (const k in queryObj) {
+    // push str key=value in list
+    // @ts-ignore
+    queryList.push(k+'='+queryObj[k]);
+  }
+  // return string with all key=value with & separator
+  return '?'+queryList.join('&');
+}
+
+/**
+ * fonction to build consumer packet for hmi status report
+ * @param {string} uid: action uid
+ * @param {string} status : action status ERROR or SUCCESS
+ * @return {ConsumerPacket}
+ */
+function buildHMIStatusCPacket(uid:string, status:string):ConsumerPacket {
+  const _query = <MessageQuery> {
+    path: PATH.HMI_BP_STATUS,
+    topic: TOPIC.REPORT_TO_HMI,
+  };
+  const _body = <MessageBody> {
+    uid: uid,
+    status: status,
+  };
+  const _headers = {};
+
+  return <ConsumerPacket>{
+    headers: _headers,
+    query: _query,
+    body: _body,
+  };
+}

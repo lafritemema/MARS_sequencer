@@ -7,7 +7,7 @@
     "test": "jest",
     "runtest": "node ./bin/run_test.js",
     "sequencer": "node -r tsconfig-paths/register ./bin/nsequencer.js",
-    "ts-sequencer": "ts-node -r tsconfig-paths/register ./src/nsequencer.ts",
+    "ts-sequencer": "ts-node -r tsconfig-paths/register ./src/sequencer.ts",
     "ts-runtest": "ts-node ./src/run_test.ts",
     "build": "tsc"
   },

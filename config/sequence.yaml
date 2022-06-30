@@ -1,4 +1,4 @@
-sequenceToRun: runAllStations
+sequenceToRun: runWorksTwoRails
 definitions:
   runAllStations :
     description: run all station deplacements

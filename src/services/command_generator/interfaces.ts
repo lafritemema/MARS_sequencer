@@ -1,4 +1,4 @@
-import {CommandDefinition} from '@common/interfaces';
+import {RequestDefinition} from 'src/server/interfaces';
 
 export interface CommandGenReport{
   commands:Command[],
@@ -7,7 +7,7 @@ export interface CommandGenReport{
 
 export interface Command {
   action:string // 'REQUEST'|'WAIT',
-  definition:CommandDefinition|WaitDefinition,
+  definition:RequestDefinition|WaitDefinition,
   description:string,
   target:string // 'PROXY'|'HMI',
   uid:string,
