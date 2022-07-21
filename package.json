@@ -8,6 +8,7 @@
     "runtest": "node ./bin/run_test.js",
     "sequencer": "node -r tsconfig-paths/register ./bin/nsequencer.js",
     "ts-sequencer": "ts-node -r tsconfig-paths/register ./src/sequencer.ts",
+    "ts-sequencer-p": "ts-node -r tsconfig-paths/register ./src/sequencer.ts -p",
     "ts-runtest": "ts-node ./src/run_test.ts",
     "build": "tsc"
   },
@@ -46,6 +47,7 @@
     "chalk": "^4.1.2",
     "config": "^3.3.6",
     "express": "^4.17.1",
-    "yaml": "^2.1.1"
+    "yaml": "^2.1.1",
+    "yargs": "^17.5.1"
   }
 }
