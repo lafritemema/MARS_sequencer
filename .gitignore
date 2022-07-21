@@ -4,4 +4,4 @@ conversion
 internship
 package-lock.json
 src/history
-bin
+bin/*
