@@ -20,8 +20,7 @@ import {buildBodyFromAction} from './services/command_generator';
 import {EventEmitter} from 'stream';
 import axios, {AxiosRequestConfig} from 'axios';
 import {AssetReportBody} from './services/assets/interfaces';
-import { cp } from 'fs';
-
+import yargs from 'yargs';
 
 // eslint-disable-next-line no-unused-vars
 const enum TOPIC {
@@ -65,6 +64,18 @@ const enum PROTOCOL {
   HTTP = 'http',
 }
 
+/**
+ */
+async function keypress():Promise<Buffer> {
+  process.stdin.setRawMode(true);
+  return new Promise((resolve, reject) => {
+    process.stdin.once('data', (key:Buffer) => {
+      process.stdin.setRawMode(false);
+      resolve(key);
+    });
+  });
+};
+
 // eslint-disable-next-line no-unused-vars
 enum ASSET {
   // eslint-disable-next-line no-unused-vars
@@ -80,6 +91,15 @@ const sequenceRuning = false;
 const SEQUENCECONFIG = './config/sequence.yaml';
 const POSTMAN = new EventEmitter();
 let comProtocol:PROTOCOL;
+
+
+const argv = yargs
+    .option('presskey', {alias: 'p',
+      description: 'press a key after each action',
+      type: 'boolean'})
+    .help()
+    .alias('help', 'h')
+    .argv;
 
 
 LOGGER.try('get server config');
@@ -182,6 +202,19 @@ async function runBuildProcess(cPacket:ConsumerPacket) {
   for (const action of actions) {
     LOGGER.info(`run action ${action.uid} : ${action.description}`);
     const result = await runAction(action);
+    console.log(result);
+
+    if (argv.presskey) {
+      console.log('press key to continue - Ctrl-C to end sequence - Ctrl-D to quit program');
+      const key = await keypress();
+
+      // ctrl-c => end of sequence ;  ctr-d => end of program
+      if ( key.toString('utf-8') === '\u0003' ) {
+        break;
+      } else if ( key.toString('utf-8') === '\u0004' ) {
+        process.exit();
+      }
+    }
 
     if (result == 'ERROR') {
       LOGGER.error(`error during action ${action.uid} : ${action.description}`);
@@ -211,6 +244,7 @@ async function runAction(action:Action):Promise<string> {
     try {
       LOGGER.debug(`run command ${cmd.description}`);
       const result = await runCommand(cmd);
+      console.log(result);
     } catch (error) {
       LOGGER.failure((`run command ${cmd.description}`));
       actionResultStatus = 'ERROR';
@@ -238,9 +272,12 @@ function runCommand(command:Command):Promise<AssetReportBody> {
             reject(response);
           }
         });
+
+        LOGGER.debug(`send request to ${command.target} with id ${command.uid}`);
         sendRequest(comProtocol, command);
       case 'WAIT':
         const waitDef = <WaitDefinition> command.definition;
+        LOGGER.debug(`wait for target return`);
         POSTMAN.once(waitDef.uid, (response:AssetReportBody)=>{
           if (response.status == 'SUCCESS') {
             resolve(response);
@@ -462,7 +499,7 @@ async function sendHTTPProxyRequest(command:Command) {
 
   try {
     let url = `http://${PROXYHOST}:${PROXYPORT}${cmdDef.path}`;
-    
+
     if (cmdDef.query) {
       const queryStr = concatQueryParameter(cmdDef.query);
       url+=queryStr;
