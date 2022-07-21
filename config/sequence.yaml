@@ -1,4 +1,4 @@
-sequenceToRun: runWorksTwoRails
+sequenceToRun: runWorksFlangeAllRails
 definitions:
   runAllStations :
     description: run all station deplacements
@@ -18,6 +18,16 @@ definitions:
         definition:
           railArea: all
           rails: all
+  runOneWebApproach:
+    description: run web approach movements
+    path: /sequence/approach
+    body:
+      goalsDefinition:
+        definitionType: area
+        definition:
+          railArea: web
+          rails: 
+            - 'y+763'
   runAllWorks:
     description: run all works movements
     path: /sequence/work
@@ -36,8 +46,8 @@ definitions:
         definition:
           railArea: all
           rails:
-            - y-254
-            - y+254
+            - y-763
+            - y+763
   runWorksFlangeAllRails:
     description: run works movements for flange area for all rails
     path: /sequence/work
